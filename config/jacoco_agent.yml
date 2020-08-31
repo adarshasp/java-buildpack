@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Cloud Foundry Java Buildpack
 # Copyright 2013-2020 the original author or authors.
 #
@@ -13,7 +15,58 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Configuration for the JaCoco Agent framework
----
-version: 0.+
-repository_root: "{default.repository.root}/jacoco"
+require 'java_buildpack/component/versioned_dependency_component'
+require 'java_buildpack/framework'
+require 'fileutils'
+
+module JavaBuildpack
+  module Framework
+
+    # Encapsulates the functionality for enabling zero-touch JacCoCo support.
+    class JacocoAgent < JavaBuildpack::Component::VersionedDependencyComponent
+
+      # (see JavaBuildpack::Component::BaseComponent#compile)
+      def compile
+        download_zip false
+        @droplet.copy_resources
+           puts "Smarsh0000----------------------"
+        puts FileUtils.pwd()
+      end
+
+      # (see JavaBuildpack::Component::BaseComponent#release)
+      def release
+        credentials = @application.services.find_service(FILTER, ADDRESS)['credentials']
+        properties = {
+          'address' => credentials[ADDRESS],
+          'output' => 'tcpclient',
+          'sessionid' => '$CF_INSTANCE_GUID'
+        }
+
+        properties['excludes'] = credentials['excludes'] if credentials.key? 'excludes'
+        properties['includes'] = credentials['includes'] if credentials.key? 'includes'
+        properties['port'] = credentials['port'] if credentials.key? 'port'
+        properties['output'] = credentials['output'] if credentials.key? 'output'
+         puts "Smarsh1----------------------"
+        puts FileUtils.pwd()
+        FileUtils.mkdir_p(@application.root + 'adarsh/smarsh')
+        
+        @droplet.java_opts.add_javaagent_with_props(@droplet.sandbox + 'jacocoagent.jar', properties)
+      end
+
+      protected
+
+      # (see JavaBuildpack::Component::VersionedDependencyComponent#supports?)
+      def supports?
+        @application.services.one_service? FILTER, ADDRESS
+      end
+
+      ADDRESS = 'address'
+
+      FILTER = /jacoco/.freeze
+
+      private_constant :ADDRESS, :FILTER
+
+    end
+
+  end
+end
